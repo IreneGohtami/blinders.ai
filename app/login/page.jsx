@@ -1,9 +1,12 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { login, signup } from './actions'
+import { login, signup, googleLogin } from './actions'
 
 export default function LoginPage() {
+  const router = useRouter()
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('')
   const [modalMessage, setModalMessage] = useState('')
@@ -26,6 +29,9 @@ export default function LoginPage() {
         setModalMessage(result.message)
         setIsModalOpen(true)
       }
+      if (result.redirectUrl) {
+        router.push(result.redirectUrl)
+      }
     } catch (error) {
       setModalTitle('Error')
       setModalMessage(error.message || 'An unexpected error occurred')
@@ -43,59 +49,72 @@ export default function LoginPage() {
 
   return (
     <>
-      <form>
-        <div className="space-y-12">
-          <div className="border-b border-white/10 pb-12">
-            <h2 className="text-base/7 font-semibold text-gray-900">Login</h2>
-
-            <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-              <div className="sm:col-span-4">
-                <label htmlFor="email" className="block text-sm/6 font-medium text-gray-900">Email</label>
-                <div className="mt-2">
-                  <div className="flex items-center">
-                    <input id="email" type="email" name="email" required className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="sm:col-span-4">
-                <label htmlFor="password" className="block text-sm/6 font-medium text-gray-900">Password</label>
-                <div className="mt-2">
-                  <div className="flex items-center">
-                    <input id="password" type="password" name="password" required className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" />
-                  </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-full max-w-sm bg-gray-100 p-6 rounded-lg">
+          <form className="space-y-4">
+            <div>
+              <label htmlFor="email">Email</label>
+              <div className="mt-2">
+                <div className="flex items-center">
+                  <input id="email" type="email" name="email" required />
                 </div>
               </div>
             </div>
-          </div>
+
+            <div>
+              <label htmlFor="password">Password</label>
+              <div className="mt-2">
+                <div className="flex items-center">
+                  <input id="password" type="password" name="password" required />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-start gap-x-4">
+              <button
+                type="button"
+                disabled={isLoading}
+                onClick={(e) => {
+                  e.preventDefault()
+                  const formData = new FormData(e.target.closest('form'))
+                  handleSubmit(formData, login)
+                }}
+                className="btn-primary w-full"
+              >
+                Log in
+              </button>
+              <button
+                type="button"
+                disabled={isLoading}
+                onClick={(e) => {
+                  e.preventDefault()
+                  const formData = new FormData(e.target.closest('form'))
+                  handleSubmit(formData, signup)
+                }}
+                className="btn-primary w-full"
+              >
+                Sign up
+              </button>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  const formData = new FormData(e.target.closest('form'))
+                  handleSubmit(formData, googleLogin)
+                }}
+                className="px-4 py-2 border flex justify-center gap-2 border-slate-200 rounded-lg text-slate-700 hover:border-white hover:text-slate-900 hover:bg-white transition duration-150 w-full"
+                loading="lazy"
+              >
+                <img className="w-6 h-6" src="images/google.svg" loading="lazy" alt="google logo"></img>
+                <span>Sign in with Google</span>
+              </button>
+            </div>
+          </form>
         </div>
-        <div className="flex items-center justify-start gap-x-4">
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={(e) => {
-              e.preventDefault()
-              const formData = new FormData(e.target.closest('form'))
-              handleSubmit(formData, login)
-            }}
-            className="rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Log in
-          </button>
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={(e) => {
-              e.preventDefault()
-              const formData = new FormData(e.target.closest('form'))
-              handleSubmit(formData, signup)
-            }}
-            className="rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Sign up
-          </button>
-        </div>
-      </form>
+      </div>
 
       {/* Modal */}
       {isModalOpen && (

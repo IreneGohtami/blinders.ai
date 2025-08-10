@@ -6,21 +6,48 @@
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Fonts */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui;
+  --font-alt: var(--font-geist), ui-sans-serif, system-ui;
+  --font-mono: var(--font-geist-mono), monospace;
+
+  /* Colors */
+  --color-primary-500: #3B82F6;
+  --color-primary-600: #2563EB;
+  --color-secondary-500: #9333EA;
+  --color-secondary-600: #7E22CE;
 }
 
-@media (prefers-color-scheme: dark) {
+/*@media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
-}
+}*/
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Global styles */
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background: var(--background, white);
+    color: var(--foreground, #111827);
+  }
+
+  button {
+    @apply rounded-md px-3 py-2 text-sm font-semibold text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600;
+  }
+  .btn-secondary {
+    @apply bg-secondary-500 hover:bg-secondary-600;
+  }
+
+  label {
+    @apply block text-sm/6 font-medium text-gray-900;
+  }
+
+  input {
+    @apply block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-600 sm:text-sm/6 disabled:bg-gray-200;
+  }
 }

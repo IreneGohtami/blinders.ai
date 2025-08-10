@@ -1,15 +1,10 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
-
 import { createClient } from '@/utils/supabase/server'
 
 export async function login(formData) {
   const supabase = await createClient()
 
-  // type-casting here for convenience
-  // in practice, you should validate your inputs
   const data = {
     email: formData.get('email'),
     password: formData.get('password'),
@@ -21,8 +16,7 @@ export async function login(formData) {
     return { error: error.message }
   }
 
-  revalidatePath('/', 'layout')
-  redirect('/account')
+  return { redirectUrl: '/account' }
 }
 
 export async function signup(formData) {
@@ -43,7 +37,23 @@ export async function signup(formData) {
     signupConfirmationEmailSent: true,
     message: 'An email confirmation has been sent! Please verify your email to complete sign up.'
   }
+}
 
-  //revalidatePath('/', 'layout')
-  //redirect('/')
+export async function googleLogin() {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+    },
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  if (data.url) {
+    return { redirectUrl: data.url }
+  }
 }
