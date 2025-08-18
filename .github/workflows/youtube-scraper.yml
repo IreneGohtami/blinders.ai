@@ -1,4 +1,4 @@
-name: Scrape Videos
+name: Scrape Youtube Videos
 
 on:
   schedule:

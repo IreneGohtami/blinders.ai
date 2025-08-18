@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: path.resolve("scripts/.env.local") });
 
 import fs from 'fs';
+import path from 'path';
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
 
@@ -46,14 +47,14 @@ async function fetchVideosByQuery(query) {
   });
 
   for (const vid of videosRes.data.items) {
-    /*const channelId = vid.snippet.channelId;
+    const channelId = vid.snippet.channelId;
 
     // 4. Get channel subscriber count
     const channelRes = await youtube.channels.list({
       part: 'statistics',
       id: channelId
     });
-    const followerCount = parseInt(channelRes.data.items[0]?.statistics.subscriberCount) || 0;*/
+    const followerCount = parseInt(channelRes.data.items[0]?.statistics.subscriberCount) || 0;
 
     // 5. Fetch top-level comments
     let commentData = [];
@@ -73,13 +74,14 @@ async function fetchVideosByQuery(query) {
       console.warn(`No comments for video ${vid.id} or comments disabled`);
     }
 
+    vid.statistics.followerCount = followerCount;
+
     // Step 5: Insert into Supabase
     const { error } = await supabase.from('scraped_videos').insert({
       platform: 'youtube',
       video_id: vid.id,
       title: vid.snippet.title,
       tags: vid.snippet.tags,
-      //follower_count: followerCount,
       top_comments: commentData,
       metadata: vid
     });
@@ -108,7 +110,8 @@ async function fetchVideosByQuery(query) {
   }
   else {
     console.log('Running youtube scraper for scheduled queries')
-    const config = JSON.parse(fs.readFileSync('./config/youtube-queries.json', 'utf-8'));
+    const configPath = path.resolve("scripts/config/youtube-queries.json");
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     for (const query of config.queries) {
       await fetchVideosByQuery(query);
     }
