@@ -1,3 +1,7 @@
+/**
+ * This script is currently configured to scrape 10 random categories defined in ./config/youtube-queries.json.
+ * Each category will fetch 100 videos, resulting in 1000 videos scraped per job run.
+ */
 import dotenv from 'dotenv';
 dotenv.config({ path: path.resolve("scripts/.env.local") });
 
@@ -34,7 +38,6 @@ async function fetchVideosByQuery(query) {
     maxResults: MAX_VIDEO,
     pageToken,
     order: 'relevance',
-
   });
 
   const { nextPageToken } = searchRes.data;
@@ -57,7 +60,7 @@ async function fetchVideosByQuery(query) {
     const followerCount = parseInt(channelRes.data.items[0]?.statistics.subscriberCount) || 0;
 
     // 5. Fetch top-level comments
-    let commentData = [];
+    let commentData = [], snapshots = [];
     try {
       const commentsRes = await youtube.commentThreads.list({
         part: 'snippet',
@@ -74,16 +77,27 @@ async function fetchVideosByQuery(query) {
       console.warn(`No comments for video ${vid.id} or comments disabled`);
     }
 
+    vid.statistics = Object.fromEntries(
+      Object.entries(vid.statistics).map(([key, value]) => [key, parseInt(value) || 0])
+    );
     vid.statistics.followerCount = followerCount;
 
-    // Step 5: Insert into Supabase
-    const { error } = await supabase.from('scraped_videos').insert({
+    snapshots.push({
+      timestamp: new Date(),
+      ...vid.statistics
+    });
+
+    // Step 5: Upsert into Supabase (insert or update if video_id exists)
+    const { error } = await supabase.from('scraped_videos').upsert({
       platform: 'youtube',
       video_id: vid.id,
       title: vid.snippet.title,
       tags: vid.snippet.tags,
       top_comments: commentData,
-      metadata: vid
+      metadata: vid,
+      snapshots
+    }, {
+      onConflict: 'video_id'
     });
     if (error) {
       console.error('Error inserting data:', error.message);
@@ -111,8 +125,15 @@ async function fetchVideosByQuery(query) {
   else {
     console.log('Running youtube scraper for scheduled queries')
     const configPath = path.resolve("scripts/config/youtube-queries.json");
-    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-    for (const query of config.queries) {
+    const { queries } = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+
+    // Randomly select 10 queries from the array
+    const shuffledQueries = queries.sort(() => Math.random() - 0.5);
+    const selectedQueries = shuffledQueries.slice(0, 10);
+
+    console.log(`Selected queries: ${selectedQueries.join(', ')}`);
+
+    for (const query of selectedQueries) {
       await fetchVideosByQuery(query);
     }
   }
