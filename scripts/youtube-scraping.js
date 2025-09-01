@@ -57,7 +57,8 @@ async function fetchVideosByQuery(query) {
       part: 'statistics',
       id: channelId
     });
-    const followerCount = parseInt(channelRes.data.items[0]?.statistics.subscriberCount) || 0;
+    const channelStats = channelRes.data.items[0]?.statistics || {};
+    const followerCount = parseInt(channelStats?.subscriberCount) || 0;
 
     // 5. Fetch top-level comments
     let commentData = [], snapshots = [];
@@ -81,6 +82,7 @@ async function fetchVideosByQuery(query) {
       Object.entries(vid.statistics).map(([key, value]) => [key, parseInt(value) || 0])
     );
     vid.statistics.followerCount = followerCount;
+    vid.channel = channelStats;
 
     snapshots.push({
       timestamp: new Date(),
@@ -88,21 +90,20 @@ async function fetchVideosByQuery(query) {
     });
 
     // Step 5: Upsert into Supabase (insert or update if video_id exists)
-    const { error } = await supabase.from('scraped_videos').upsert({
-      platform: 'youtube',
-      video_id: vid.id,
-      title: vid.snippet.title,
-      tags: vid.snippet.tags,
-      top_comments: commentData,
-      metadata: vid,
-      snapshots
-    }, {
-      onConflict: 'video_id'
+    const { error } = await supabase.rpc('upsert_scraped_videos', {
+      _platform: 'youtube',
+      _video_id: vid.id,
+      _title: vid.snippet.title,
+      _tags: vid.snippet.tags,
+      _metadata: vid,
+      _top_comments: commentData,
+      _snapshots: snapshots
     });
+
     if (error) {
-      console.error('Error inserting data:', error.message);
+      console.error('Error upserting data:', error.message);
     } else {
-      console.log('Data inserted successfully:', vid.snippet.title);
+      console.log('Data upserted successfully:', vid.snippet.title);
     }
   }
 
