@@ -1,0 +1,9 @@
+pandas
+lightgbm
+supabase
+scikit-learn
+sentence-transformers
+numpy
+python-dotenv
+urllib3>=2
+OpenAI
