@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 import joblib
 from pathlib import Path
 from datetime import datetime, timezone
+import io
 #from openai import OpenAI
 
 # Load .env.local from scripts/
@@ -32,6 +33,38 @@ page = 0
 # Fetch data ordered by oldest ID first with pagination
 response = supabase.table("scraped_videos").select("*").eq('trained_with', 0).range(page * page_size, (page + 1) * page_size - 1).execute()
 df = pd.DataFrame(response.data)
+
+def get_model_from_storage(model_name, bucket="models"):
+  remote_path = f"{model_name}.pkl"
+  init_model = None
+
+  try:
+    res = supabase.storage.from_(bucket).download(remote_path)
+    if res:
+      init_model = joblib.load(io.BytesIO(res))
+      print(f"🔄 Loaded existing model for {model_name}.pkl from Supabase")
+  except Exception as e:
+    print(f"⚠️ No existing model found for {model_name}.pkl, training from scratch. ({e})")
+
+  return init_model
+
+def upload_model_to_storage(model, model_name, bucket="models"):
+  # Save model locally
+  local_path = f"artifacts/{model_name}.pkl"  # artifacts is the temp directory within the github actions container
+  os.makedirs("artifacts", exist_ok=True)
+  joblib.dump(model, local_path)
+
+  # Upload/overwrite to Supabase
+  with open(local_path, "rb") as f:
+    remote_path = f"{model_name}.pkl"
+    supabase.storage.from_(bucket).upload(
+      remote_path,
+      f,
+      {"upsert": "true", "content-type": "application/octet-stream"}
+    )
+
+  print(f"✅ Uploaded updated model for {model_name}.pkl to Supabase")
+
 
 '''
 openAIClient = OpenAI()
@@ -403,16 +436,10 @@ for task_name, y_raw in tasks.items():
     X, y, test_size=0.2, random_state=42
   )
 
-  # Path to model file
-  models_dir = Path(__file__).parent / "models"
-  models_dir.mkdir(exist_ok=True)
-  model_path = models_dir / f"{task_name}_model.pkl"
-
   # Load existing model if incremental learning
-  init_model = None
-  if model_path.exists():
+  init_model = get_model_from_storage(f"{task_name}_model")
+  if init_model is not None:
     print(f"🔄 Continuing training for {task_name}...")
-    init_model = joblib.load(model_path)
 
   # Train LightGBM
   model = lgb.LGBMRegressor(objective="regression", n_estimators=1000, verbosity=-1)
@@ -430,9 +457,8 @@ for task_name, y_raw in tasks.items():
   rmse = mean_squared_error(y_test, y_pred)
   print(f"[{task_name}] RMSE: {rmse:.4f}")
 
-  # Save model to models directory
-  joblib.dump(model, model_path)
-  print(f"✅ Model saved: {task_name}_model.pkl")
+  # Upload model to Supabase storage
+  upload_model_to_storage(model, f"{task_name}_model")
 
 
 # Now train the growth model
