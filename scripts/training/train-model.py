@@ -32,6 +32,15 @@ page = 0
 
 # Fetch data ordered by oldest ID first with pagination
 response = supabase.table("scraped_videos").select("*").eq('trained_with', 0).range(page * page_size, (page + 1) * page_size - 1).execute()
+#debug query
+'''
+response = supabase.table("scraped_videos").select("*") \
+  .eq("trained_with", 0) \
+  .filter("snapshots->1", "not.is", "null") \
+  .range(page * page_size, (page + 1) * page_size - 1) \
+  .execute()
+'''
+
 df = pd.DataFrame(response.data)
 
 def get_model_from_storage(model_name, bucket="models"):
@@ -117,9 +126,9 @@ def get_growth_targets(snapshots, horizons):
     # find the closest snapshot after horizon
     later = next((s for s in snapshots if pd.to_datetime(s["timestamp"]) >= target_time), None)
     if later:
-      growth[f"growth_likes_{h}h"] = later["likeCount"] - start["likeCount"]
-      growth[f"growth_views_{h}h"] = later["viewCount"] - start["viewCount"]
-      growth[f"growth_comments_{h}h"] = later["commentCount"] - start["commentCount"]
+      growth[f"growth_likes_{h}h"] = later.get("likeCount", 0) - start.get("likeCount", 0)
+      growth[f"growth_views_{h}h"] = later.get("viewCount", 0) - start.get("viewCount", 0)
+      growth[f"growth_comments_{h}h"] = later.get("commentCount", 0) - start.get("commentCount", 0)
     else:
       # if no later snapshot, fill with None
       growth[f"growth_likes_{h}h"] = None
@@ -139,10 +148,10 @@ def prepare_growth_dataset(videos, horizons):
       # here we can also add first-snapshot features as predictors
       first = snapshots[0]
       features = {
-        "likes_start": first["likeCount"],
-        "views_start": first["viewCount"],
-        "comments_start": first["commentCount"],
-        "followers_start": first["followerCount"],
+        "likes_start": first.get("likeCount", 0),
+        "views_start": first.get("viewCount", 0),
+        "comments_start": first.get("commentCount", 0),
+        "followers_start": first.get("followerCount", 0),
       }
       X_data.append(features)
       y_data.append(growth)
