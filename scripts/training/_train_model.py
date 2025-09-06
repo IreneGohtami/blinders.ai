@@ -1,25 +1,31 @@
 # train_model.py
+import io
+import joblib
+import lightgbm as lgb
+import numpy as np
 import os
 import pandas as pd
-import lightgbm as lgb
-from supabase import create_client, Client
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.linear_model import SGDRegressor
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn.preprocessing import StandardScaler
-from sentence_transformers import SentenceTransformer
-import numpy as np
-from dotenv import load_dotenv
-import joblib
-from pathlib import Path
 from datetime import datetime, timezone
-import io
+from dotenv import load_dotenv
+from pathlib import Path
+from supabase import create_client, Client
+from sklearn.decomposition import PCA
+from sklearn.linear_model import SGDRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.preprocessing import StandardScaler, normalize
+from sentence_transformers import SentenceTransformer
+from transformers import pipeline
 #from openai import OpenAI
 
 # Load .env.local from scripts/
 _script_dir_env = Path(__file__).parent.parent / ".env.local"
 load_dotenv(_script_dir_env)
+
+sentiment_pipeline = pipeline("sentiment-analysis")
+# Can use: "all-MiniLM-L6-v2" (small, fast), or "BAAI/bge-small-en-v1.5" (newer, better)
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # Connect to Supabase
 url: str = os.environ.get("SUPABASE_URL")
@@ -107,9 +113,6 @@ def get_weighted_comment_embedding(comments, model="text-embedding-3-small"):
   return weighted_avg
 '''
 
-# Can use: "all-MiniLM-L6-v2" (small, fast), or "BAAI/bge-small-en-v1.5" (newer, better)
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
 def get_growth_targets(snapshots, horizons):
   if not snapshots or len(snapshots) < 2:
     return {}
@@ -180,15 +183,10 @@ def train_growth_model(videos, horizons=[24, 7*24, 30*24, 90*24]):
 
   print(f"📊 Training growth model with {len(X)} samples and {X.shape[1]} features")
 
-  # Create or load models
-  models_dir = Path(__file__).parent / "models"
-  models_dir.mkdir(exist_ok=True)
-  model_path = models_dir / "vlc_growth_model.pkl"
-
-  # Load existing or create new incremental model
-  if model_path.exists():
-    print("🔄 Loading existing model for incremental training...")
-    model = joblib.load(model_path)
+  # Load existing model or create new one
+  model = get_model_from_storage("vlc_growth_model")
+  if model is not None:
+    print("🔄 Continuing training for vlc_growth_model...")
   else:
     print("✨ Creating new incremental model...")
     base_model = SGDRegressor(
@@ -209,9 +207,40 @@ def train_growth_model(videos, horizons=[24, 7*24, 30*24, 90*24]):
     print(f"{col}: MSE={mse:.2f}")
 
   # Save updated model
-  joblib.dump(model, model_path)
-  print("✅ Model saved: vlc_growth_model.pkl")
+  upload_model_to_storage(model, "vlc_growth_model")
 
+def extract_comment_sentiment(comments):
+  """
+  Run sentiment analysis on a list of comments and aggregate into features.
+  Returns [positive_ratio, negative_ratio, neutral_ratio]
+  """
+  if not comments:
+    return [0.0, 0.0, 0.0]
+
+  # Extract text from comment objects
+  texts = [c.get("text", "") for c in comments if c.get("text", "").strip()]
+  if not texts:
+    return [0.0, 0.0, 0.0]
+
+  results = sentiment_pipeline(texts, truncation=True)
+
+  # Track counts
+  pos, neg, neu = 0, 0, 0
+  for r in results:
+    label = r["label"].upper()
+    if "POSITIVE" in label:
+      pos += 1
+    elif "NEGATIVE" in label:
+      neg += 1
+    else:
+      neu += 1
+
+  total = len(results)
+  return [
+    pos / total,
+    neg / total,
+    neu / total,
+  ]
 
 def get_weighted_comment_embedding(comments):
   if not comments:
@@ -230,7 +259,7 @@ def get_weighted_comment_embedding(comments):
     return None
 
   # Get embeddings (batch encode all texts at once)
-  vectors = model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
+  vectors = model.encode(texts, convert_to_numpy=True, normalize_embeddings=False)
 
   # Weighted average
   weighted_avg = np.average(vectors, axis=0, weights=weights)
@@ -253,7 +282,6 @@ def prepare_text_features(row):
 df["text_feature"] = df.apply(prepare_text_features, axis=1)
 
 # --- Embeddings ---
-#embed_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 text_embeddings = model.encode(df["text_feature"].fillna(""), convert_to_numpy=True)
 
 numeric_features = []
@@ -279,6 +307,7 @@ for _, row in df.iterrows():
   top_comments = row.get("top_comments", [])
   avg_comment_likes = np.mean([c.get("likeCount", 0) for c in top_comments]) if top_comments else 0
   comment_embedding = get_weighted_comment_embedding(top_comments)
+  comment_sentiment = extract_comment_sentiment(top_comments)
 
   like_rate = likes / views if views else 0
   comment_rate = comment_count / views if views else 0
@@ -293,7 +322,8 @@ for _, row in df.iterrows():
     avg_comment_likes, comment_count,
     like_rate, comment_rate, favorite_rate,
     engagement_per_follower, views_per_follower, likes_per_follower
-  ])
+  ] + comment_sentiment
+  )
 
   embedding_dim = model.get_sentence_embedding_dimension()
   embeddings.append(comment_embedding if comment_embedding is not None else np.zeros(embedding_dim))
@@ -308,7 +338,8 @@ column_order = [
   'channel_video_count', 'channel_view_count', 'publish_hour', 'publish_day', 'category_id',
   'avg_comment_likes', 'comment_count',
   'like_rate', 'comment_rate', 'favorite_rate',
-  'engagement_per_follower', 'views_per_follower', 'likes_per_follower'
+  'engagement_per_follower', 'views_per_follower', 'likes_per_follower',
+  'comment_sentiment_pos', 'comment_sentiment_neg', 'comment_sentiment_neu'
 ]
 
 # Create column index mapping
@@ -329,35 +360,36 @@ for item in skewed:
 scaler = StandardScaler()
 numeric_scaled = scaler.fit_transform(numeric_data)
 
-def ensure_2d(arr):
-  arr = np.array(arr)
-  if arr.ndim == 1:   # single vector
-    arr = arr.reshape(1, -1)
-  return arr
+# Reduce embedding dimensionality (optional, helps generalization)
+pca_text = PCA(n_components=50, random_state=42)
+pca_comment = PCA(n_components=50, random_state=42)
+text_embeddings_reduced = pca_text.fit_transform(text_embeddings)
+comment_embeddings_reduced = pca_comment.fit_transform(comment_embeddings)
 
-text_embeddings = ensure_2d(text_embeddings)
-comment_embeddings = ensure_2d(comment_embeddings)
-numeric_scaled = ensure_2d(numeric_scaled)
+# Normalize comment embeddings (so weight distribution doesn’t skew)
+comment_embeddings_reduced = normalize(comment_embeddings_reduced)
 
-
-X = np.hstack([text_embeddings, comment_embeddings, numeric_scaled])
+X = np.hstack([text_embeddings_reduced, comment_embeddings_reduced, numeric_scaled])
 print("Final X:", X.shape)
 
 
-# Convert publishedAt → datetime
+# 1) Core timestamps and base counts
+today = pd.Timestamp.utcnow()
 df["published_at"] = pd.to_datetime(
   df["metadata"].apply(lambda x: x.get("snippet", {}).get("publishedAt", None)),
   utc=True,
   errors="coerce"  # invalid/missing dates become NaT
 )
-df["like_count"] = df["metadata"].apply(lambda x: int(x.get("statistics", {}).get("likeCount", 0)))
-df["view_count"] = df["metadata"].apply(lambda x: int(x.get("statistics", {}).get("viewCount", 0)))
-df["comment_count"] = df["metadata"].apply(lambda x: int(x.get("statistics", {}).get("commentCount", 0)))
-
-today = datetime.now(timezone.utc)
-
-# Days since upload (avoid division by zero)
 df["days_since_upload"] = (today - df["published_at"]).dt.days.clip(lower=1)
+df["like_count"]        = df["metadata"].apply(lambda x: int(x.get("statistics", {}).get("likeCount", 0)))
+df["view_count"]        = df["metadata"].apply(lambda x: int(x.get("statistics", {}).get("viewCount", 0)))
+df["comment_count"]     = df["metadata"].apply(lambda x: int(x.get("statistics", {}).get("commentCount", 0)))
+df["follower_count"]    = df["metadata"].apply(lambda x: int(x.get("statistics", {}).get("followerCount", 0)))
+
+# 2) Temporal features (safe casting)
+df["upload_day_of_week"] = df["published_at"].dt.dayofweek
+df["upload_hour"] = df["published_at"].dt.hour
+df["upload_month"] = df["published_at"].dt.month
 
 # Average daily views
 print(df["days_since_upload"], df["view_count"], df["comment_count"])
@@ -446,7 +478,7 @@ for task_name, y_raw in tasks.items():
   )
 
   # Load existing model if incremental learning
-  init_model = get_model_from_storage(f"{task_name}_model")
+  init_model = None # get_model_from_storage(f"{task_name}_model")
   if init_model is not None:
     print(f"🔄 Continuing training for {task_name}...")
 
@@ -473,12 +505,13 @@ for task_name, y_raw in tasks.items():
 # Now train the growth model
 train_growth_model(df_trainable.to_dict('records'))
 
-
+'''
 # Finally, update database and flag the row
 video_ids = [item['id'] for item in response.data]
 if video_ids:
   supabase.table("scraped_videos").update({"trained_with": 1}).in_("id", video_ids).execute()
 print("✅ Database updated")
+'''
 
 '''
 # Train/Test Split for 6-month views prediction

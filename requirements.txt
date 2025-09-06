@@ -7,3 +7,6 @@ numpy
 python-dotenv
 urllib3>=2
 OpenAI
+transformers
+yt-dlp
+git+https://github.com/openai/CLIP.git

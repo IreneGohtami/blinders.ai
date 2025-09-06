@@ -2,7 +2,7 @@ name: Train Model With Scraped Data
 
 on:
   schedule:
-    - cron: "30 */6 * * *" # every 6 hours
+    - cron: "30 */4 * * *" # every 4 hours
   workflow_dispatch:
 
 jobs:
@@ -29,4 +29,4 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run training script
-        run: python scripts/training/train-model.py
+        run: python scripts/training/train_model.py
