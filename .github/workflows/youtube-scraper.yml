@@ -27,10 +27,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run youtube-scraping.js
+      - name: Run youtube_scraping.js
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           QUERY: ${{ github.event.inputs.query }}
-        run: node scripts/youtube-scraping.js
+        run: node scripts/youtube_scraping.js

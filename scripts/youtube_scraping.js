@@ -97,7 +97,8 @@ async function fetchVideosByQuery(query) {
       _tags: vid.snippet.tags,
       _metadata: vid,
       _top_comments: commentData,
-      _snapshots: snapshots
+      _snapshots: snapshots,
+      _published_at: vid.snippet.publishedAt
     });
 
     if (error) {

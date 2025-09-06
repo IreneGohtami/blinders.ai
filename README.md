@@ -34,7 +34,7 @@ The scripts are set to run automatically via Github scheduler which is configure
 ### Web Scraper
 #### To run Youtube web scraper locally:
 ```bash
-node ./scripts/youtube-scraping.js
+node ./scripts/youtube_scraping.js
 ```
 
 ### Python Model Training
@@ -42,7 +42,7 @@ node ./scripts/youtube-scraping.js
 2. Install requirements:
   - `pip install -r requirements.txt`
 3. Run model training script locally:
-  - `python ./scripts/training/train-model.py`
+  - `python ./scripts/training/train_model.py`
 
 
 ## Frontend Deployment via Vercel
