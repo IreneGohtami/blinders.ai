@@ -28,5 +28,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Create cookies file
+        run: |
+          if [ -n "${{ secrets.YTDL_COOKIES }}" ]; then
+            echo "${{ secrets.YTDL_COOKIES }}" > cookies.txt
+            echo "✅ Cookies file created ($(wc -c < cookies.txt) bytes)"
+          else
+            echo "# Empty cookies file" > cookies.txt
+            echo "⚠️ No cookies provided, yt-dlp may fail on some videos"
+          fi
+
       - name: Run training script
+        env:
+          YTDL_COOKIES_FILE: cookies.txt
         run: python scripts/training/train_model.py

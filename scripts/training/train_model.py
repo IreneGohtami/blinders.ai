@@ -114,10 +114,17 @@ def fetch_video_assets(video_id, outdir="artifacts"):
     "--write-auto-subs",              # get auto subtitles
     "--sub-lang", "en",               # English subs
     "--convert-subs", "srt",          # convert to SRT
-    "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",  # Fake browser
     "-o", str(outdir / f"{video_id}"),# output pattern
     url
   ]
+
+  # Add cookies if available and not empty
+  cookies_file = os.getenv("YTDL_COOKIES_FILE", "cookies.txt")
+  if os.path.exists(cookies_file) and os.path.getsize(cookies_file) > 100:  # Check if file has content
+    cmd.extend(["--cookies", cookies_file])
+    print(f"🍪 Using cookies from {cookies_file}")
+  else:
+    print("⚠️ No cookies available, yt-dlp may fail on some videos")
 
   subprocess.run(cmd, check=False)
 
