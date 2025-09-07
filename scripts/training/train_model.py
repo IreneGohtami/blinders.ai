@@ -109,11 +109,12 @@ def fetch_video_assets(video_id, outdir="artifacts"):
 
   cmd = [
     "yt-dlp",
-    "--skip-download",                # don’t download video
+    "--skip-download",                # don't download video
     "--write-thumbnail",              # get thumbnail
     "--write-auto-subs",              # get auto subtitles
     "--sub-lang", "en",               # English subs
     "--convert-subs", "srt",          # convert to SRT
+    "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",  # Fake browser
     "-o", str(outdir / f"{video_id}"),# output pattern
     url
   ]
@@ -438,5 +439,5 @@ train_main_model()
 # Update database
 video_ids = [item['id'] for item in response.data]
 if video_ids:
-  supabase.table("scraped_videos").update({"trained_with": 1}).in_("id", video_ids).execute()
+  supabase.table("scraped_videos").update({"trained_with": 1, "updated_at": datetime.now().isoformat()}).in_("id", video_ids).execute()
 print(f"✅ Total videos trained: {len(video_ids)}")
