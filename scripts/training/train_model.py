@@ -34,7 +34,7 @@ key: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 supabase: Client = create_client(url, key)
 
 # Fetch dataset from your scraped table with pagination
-page_size = 50
+page_size = 100
 page = 0
 
 # Fetch untrained data from DB
