@@ -28,21 +28,35 @@ SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 YOUTUBE_API_KEY=
 OPENAI_API_KEY=
+HF_TOKEN=
 ```
 The scripts are set to run automatically via Github scheduler which is configured inside `.github/workflows/`
 
-### Web Scraper
+### Web Scraper (Nodejs)
 #### To run Youtube web scraper locally:
 ```bash
 node ./scripts/youtube_scraping.js
 ```
 
-### Python Model Training
+### Model Training (Python)
 1. Ensure you have python installed, version 3.11 is preferred
 2. Install requirements:
   - `pip install -r requirements.txt`
 3. Run model training script locally:
   - `python ./scripts/training/train_model.py`
+
+
+### Video Analyzing (Python)
+1. Check above pre-requisites to run python scripts locally
+2. Update the video url (search `youtube_url`) that you want to analyze; currently supports youtube video
+3. If using Hugging Face's Mistral or Llama model:
+  - First, you will need to generate access token [here](https://huggingface.co/settings/tokens)
+  - Then, authenticate via cmd: `hf auth login` and paste your token
+  - Once successful, it will save your token locally in cache
+  - Grant access to the model repository, example: https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2
+  - Set the `HF_TOKEN` env in your .env.local
+4. Run script locally:
+  - `python ./scripts/analyzing/analyze_video.py`
 
 
 ## Frontend Deployment via Vercel

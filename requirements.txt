@@ -10,3 +10,12 @@ OpenAI
 transformers
 yt-dlp
 git+https://github.com/openai/CLIP.git
+moviepy
+imageio-ffmpeg
+opencv-python
+torchvision
+torchaudio
+easyocr
+faster-whisper
+accelerate
+huggingface_hub
