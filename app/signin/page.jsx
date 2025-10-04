@@ -61,17 +61,17 @@ export default function LoginForm() {
 	};
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-100">
-            <div className="w-full max-w-md bg-white p-8 shadow-lg rounded-2xl border border-gray-100">
-                <div className="mb-8 text-center">
-                    <h1 className="text-md font-bold text-indigo-600 mb-4">blinders.ai</h1>
-                    <h2 className="text-3xl font-bold text-gray-800 mb-2">Welcome Back</h2>
-                    <p className="text-gray-500 text-sm">Sign in to your account to continue</p>
+        <div className="page-container">
+            <div className="card">
+                <div className={`text-center ${error ? 'mb-5' : 'mb-8'}`}>
+                    <h1 className="brand-title">blinders.ai</h1>
+                    <h2 className="page-title">Welcome Back</h2>
+                    <p className="page-subtitle">Sign in to your account to continue</p>
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-md">
-                        <p className="text-red-600 text-sm flex items-center">
+                    <div className="alert-error">
+                        <p className="alert-error-text">
                             <svg className="w-6 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                             </svg>
@@ -80,12 +80,12 @@ export default function LoginForm() {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="form-group">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <label className="form-label">Email</label>
                         <div className="relative rounded-md shadow-sm">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <div className="input-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                                 </svg>
@@ -93,7 +93,7 @@ export default function LoginForm() {
                             <input
                                 type="email"
                                 name="email"
-                                className="pl-10 w-full py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                                className="form-input-with-icon"
                                 placeholder="you@example.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -102,17 +102,17 @@ export default function LoginForm() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <label className="form-label">Password</label>
                         <div className="relative rounded-md shadow-sm">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <div className="input-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                                 </svg>
                             </div>
                             <input
                                 type={showPassword ? "text" : "password"}
                                 name="password"
-                                className="pl-10 w-full py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                                className="form-input-with-icon"
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -121,7 +121,7 @@ export default function LoginForm() {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                                    className="icon-btn"
                                 >
                                     {showPassword ? (
                                         <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -139,13 +139,13 @@ export default function LoginForm() {
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="form-row">
                         <div className="flex items-center">
                             <input
                                 id="remember-me"
                                 name="remember-me"
                                 type="checkbox"
-                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                className="checkbox"
                             />
                             <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
                                 Remember me
@@ -153,7 +153,7 @@ export default function LoginForm() {
                         </div>
 
                         <div className="text-sm">
-                            <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+                            <a href="#" className="link">
                                 Forgot password?
                             </a>
                         </div>
@@ -162,7 +162,7 @@ export default function LoginForm() {
                     <button
                         type="submit"
 						disabled={isLoading}
-                        className="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors text-sm font-medium shadow-sm mb-2"
+                        className="btn-primary mb-2"
                     >
                         Sign In
                     </button>
@@ -173,7 +173,7 @@ export default function LoginForm() {
 							const formData = new FormData(e.target.closest('form'))
 							handleGoogleLogin(formData)
 						}}
-						className="px-4 py-2 border flex justify-center gap-2 border-slate-200 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition duration-150 w-full"
+						className="btn-secondary w-full"
 						loading="lazy"
 						>
 						<img className="w-6 h-6" src="images/google.svg" loading="lazy" alt="google logo"></img>
