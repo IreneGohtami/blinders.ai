@@ -147,7 +147,7 @@ export default function LoginForm() {
                                 type="checkbox"
                                 className="checkbox"
                             />
-                            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                            <label htmlFor="remember-me" className="ml-2 block text-sm">
                                 Remember me
                             </label>
                         </div>
@@ -182,7 +182,7 @@ export default function LoginForm() {
                 </form>
 
                 <div className="mt-6 text-center text-sm">
-                    <p className="text-gray-600">
+                    <p>
                         Don&apos;t have an account?{" "}
                         <a href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
                             Sign up

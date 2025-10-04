@@ -10,7 +10,7 @@ export default async function Account() {
   } = await supabase.auth.getUser()
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar user={user} />
       <div className="flex-1 overflow-auto">
         <AccountForm user={user} />

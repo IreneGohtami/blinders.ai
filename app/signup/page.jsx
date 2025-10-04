@@ -210,7 +210,7 @@ export default function SignupForm() {
                             type="checkbox"
                             className="checkbox"
                         />
-                        <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
+                        <label htmlFor="terms" className="ml-2 block text-sm">
                             I agree to the{" "}
                             <a href="#" className="link">
                                 Terms of Service
@@ -232,7 +232,7 @@ export default function SignupForm() {
                 </form>
 
                 <div className="mt-6 text-center text-sm">
-                    <p className="text-gray-600">
+                    <p>
                         Already have an account?{" "}
                         <a href="/signin" className="link">
                             Sign in
