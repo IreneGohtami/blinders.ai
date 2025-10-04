@@ -1,5 +1,6 @@
-import AccountForm from './account-form'
+import AccountForm from './AccountForm'
 import { createClient } from '@/utils/supabase/server'
+import Sidebar from '@/components/Sidebar'
 
 export default async function Account() {
   const supabase = await createClient()
@@ -8,5 +9,12 @@ export default async function Account() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  return <AccountForm user={user} />
+  return (
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar user={user} />
+      <div className="flex-1 overflow-auto">
+        <AccountForm user={user} />
+      </div>
+    </div>
+  )
 }
