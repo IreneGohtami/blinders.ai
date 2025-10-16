@@ -11,7 +11,7 @@ export default function AuthCallback() {
   useEffect(() => {
     const finishAuth = async () => {
       await supabase.auth.getSession() // forces code exchange
-      router.replace('/account')
+      router.replace('/dashboard')
     }
     finishAuth()
   }, [router, supabase])

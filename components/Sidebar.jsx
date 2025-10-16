@@ -3,11 +3,19 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 
 const navigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Profile', href: '/account', icon: UserIcon },
-  { name: 'Settings', href: '/account/settings', icon: CogIcon },
-  { name: 'Billing', href: '/account/billing', icon: CreditCardIcon },
-  { name: 'Support', href: '/account/support', icon: QuestionMarkCircleIcon },
+  { name: 'Settings', href: '#', icon: CogIcon },
+  { name: 'Billing', href: '#', icon: CreditCardIcon },
+  { name: 'Support', href: '#', icon: QuestionMarkCircleIcon },
 ]
+function HomeIcon(props) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+    </svg>
+  )
+}
 
 function UserIcon(props) {
   return (
@@ -53,7 +61,7 @@ export default function Sidebar({ user }) {
       </div>
 
       {/* User info */}
-      <div className="flex items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center px-4 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex-shrink-0">
           <div className="profile-avatar-small">
             <UserIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />

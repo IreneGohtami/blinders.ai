@@ -9,7 +9,7 @@ export default function LoginForm() {
 	useEffect(() => {
 		const checkAuth = async () => {
 			if (await isUserlogin()) {
-				router.push('/account');
+				router.push('/dashboard');
 			}
 		};
 		checkAuth();

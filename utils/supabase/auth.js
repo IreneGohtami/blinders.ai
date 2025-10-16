@@ -16,7 +16,7 @@ export async function login(formData) {
     return { error: error.message }
   }
 
-  return { redirectUrl: '/account' }
+  return { redirectUrl: '/dashboard' }
 }
 
 export async function signup(formData) {

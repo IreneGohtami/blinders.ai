@@ -10,7 +10,7 @@ export default function SignupForm() {
 	useEffect(() => {
 			const checkAuth = async () => {
 				if (await isUserlogin()) {
-					router.push('/account');
+					router.push('/dashboard');
 				}
 			};
 			checkAuth();
