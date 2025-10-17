@@ -10,12 +10,26 @@ export default function Dashboard() {
   const [showUploadVideoModal, setShowUploadVideoModal] = useState(false)
   const [uploadUrl, setUploadUrl] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [selectedVideo, setSelectedVideo] = useState(null)
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     getUser()
     fetchVideos()
   }, [])
+
+  // Poll for updates when there are processing videos
+  useEffect(() => {
+    const hasProcessingVideos = videos.some(v => v.status === 'processing')
+    if (!hasProcessingVideos) return
+
+    const interval = setInterval(() => {
+      fetchVideos()
+    }, 5000) // Poll every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [videos])
 
   const getUser = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -32,7 +46,7 @@ export default function Dashboard() {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(6)
+        //.limit(6)
 
       if (error) throw error
       setVideos(data || [])
@@ -66,10 +80,36 @@ export default function Dashboard() {
     }
   }
 
+  const getProcessingStatus = () => {
+    const processingVideo = videos.find(v => v.status === 'processing')
+    if (!processingVideo) {
+      const lastVideo = videos[0]
+      if (!lastVideo) return 'No videos analyzed yet'
+
+      if (lastVideo.completed_at && lastVideo.created_at) {
+        const createdAt = new Date(lastVideo.created_at)
+        const completedAt = new Date(lastVideo.completed_at)
+        const durationMs = completedAt - createdAt
+        const minutes = Math.floor(durationMs / 60000)
+        const seconds = Math.floor((durationMs % 60000) / 1000)
+        return `${lastVideo.title || 'Untitled Video'} - ${minutes}:${seconds.toString().padStart(2, '0')} total duration`
+      }
+
+      return lastVideo.summary ? lastVideo.summary.substring(0, 100) + '...' : 'No analysis available'
+    }
+
+    const createdAt = new Date(processingVideo.created_at)
+    const now = new Date()
+    const elapsedMs = now - createdAt
+    const elapsedMinutes = Math.floor(elapsedMs / 60000)
+    const elapsedSeconds = Math.floor((elapsedMs % 60000) / 1000)
+
+    return `${processingVideo.title || 'Untitled Video'} - ${elapsedMinutes}:${elapsedSeconds.toString().padStart(2, '0')}`
+  }
+
   const stats = {
     totalVideos: videos.length,
-    avgLength: videos.length > 0 ? Math.round(videos.reduce((acc, v) => acc + (Math.floor((v.duration || 0) / 60)), 0) / videos.length) : 0,
-    latestSummary: videos[0]?.summary ? videos[0].summary.substring(0, 100) + '...' : 'No videos analyzed yet'
+    avgLength: videos.length > 0 ? Math.round(videos.reduce((acc, v) => acc + (Math.floor((v.duration || 0) / 60)), 0) / videos.length) : 0
   }
 
   return (
@@ -146,7 +186,7 @@ export default function Dashboard() {
             {/* Latest Summary */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-8">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Latest Analysis Summary</h3>
-              <p className="text-gray-600 dark:text-gray-400">{stats.latestSummary}</p>
+              <p className="text-gray-600 dark:text-gray-400">{getProcessingStatus()}</p>
             </div>
 
             {/* My Videos Section */}
@@ -169,7 +209,15 @@ export default function Dashboard() {
                 ) : videos.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {videos.map((video) => (
-                      <div key={video.id} className="group cursor-pointer" onClick={() => window.open(video.video_url, '_blank')}>
+                      <div key={video.id} className="group">
+                        <div className="cursor-pointer" onClick={() => {
+                          if (video.status === 'completed' && video.summary) {
+                            setSelectedVideo(video)
+                            setShowAnalysisModal(true)
+                          } else {
+                            window.open(video.video_url, '_blank')
+                          }
+                        }}>
                         <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg mb-3 overflow-hidden">
                           {video.thumbnail_url ? (
                             <img src={video.thumbnail_url} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
@@ -181,17 +229,30 @@ export default function Dashboard() {
                             </div>
                           )}
                         </div>
-                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1 line-clamp-2">{video.title || 'Untitled Video'}</h4>
-                        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            video.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                            video.status === 'processing' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                          }`}>
-                            {video.status || 'Unknown'}
-                          </span>
-                          <span>{video.duration ? `${Math.floor(video.duration / 60)}m` : ''}</span>
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1 line-clamp-2">{video.title || 'Untitled Video'}</h4>
+                          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              video.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                              video.status === 'processing' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                              'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            }`}>
+                              {video.status || 'Unknown'}
+                            </span>
+                            <span>{video.duration ? `${Math.floor(video.duration / 60)}m` : ''}</span>
+                          </div>
                         </div>
+                        {video.status === 'completed' && video.summary && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedVideo(video)
+                              setShowAnalysisModal(true)
+                            }}
+                            className="mt-2 w-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            View Analysis
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -215,6 +276,56 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      {/* Analysis Modal */}
+      {showAnalysisModal && selectedVideo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{selectedVideo.title}</h3>
+              <button
+                onClick={() => setShowAnalysisModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Video Info */}
+              <div className="flex items-center space-x-4">
+                {selectedVideo.thumbnail_url && (
+                  <img src={selectedVideo.thumbnail_url} alt={selectedVideo.title} className="w-24 h-16 object-cover rounded" />
+                )}
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Duration: {selectedVideo.duration ? `${Math.floor(selectedVideo.duration / 60)}m` : 'Unknown'}</p>
+                  <a href={selectedVideo.video_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm">
+                    View on YouTube
+                  </a>
+                </div>
+              </div>
+
+              {/* Analysis Summary */}
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Analysis Summary</h4>
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{selectedVideo.summary}</p>
+                </div>
+              </div>
+
+              {/* Performance Forecast Placeholder */}
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Performance Forecast</h4>
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+                  <p className="text-gray-500 dark:text-gray-400 italic">Performance forecasting will be available soon</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upload Modal */}
       {showUploadVideoModal && (

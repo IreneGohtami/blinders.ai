@@ -1,7 +1,7 @@
+import os
 import cv2
 import easyocr
 import moviepy as mp
-import os
 import re
 import tempfile
 import yt_dlp
@@ -37,12 +37,14 @@ def download_youtube_video(url):
     return filepath
 
 # ---------- Step 1: Extract frames ----------
-def extract_frames(video_path, fps=1):
+def extract_frames(video_path, fps=1, max_duration=120):
     cap = cv2.VideoCapture(video_path)
     frames = []
     count = 0
     frame_rate = int(cap.get(cv2.CAP_PROP_FPS)) // fps
-    while cap.isOpened():
+    max_frames = max_duration * cap.get(cv2.CAP_PROP_FPS)
+
+    while cap.isOpened() and count < max_frames:
         ret, frame = cap.read()
         if not ret:
             break
@@ -53,7 +55,7 @@ def extract_frames(video_path, fps=1):
     return frames
 
 # ---------- Step 2: Frame captioning ----------
-blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base", use_fast=True)
 blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
 
 def caption_frames(frames):
@@ -67,18 +69,22 @@ def caption_frames(frames):
 
 # ---------- Step 3: Audio transcription ----------
 whisper_model = WhisperModel(
-    "medium"
+    "medium",
+    compute_type="float32"
 )
 
-def transcribe_audio(video_path):
-    # Extract audio from video
+def transcribe_audio(video_path, max_duration=120):
+    # Extract audio from video (limit to first 2 minutes)
     video = mp.VideoFileClip(video_path)
+    if video.duration > max_duration:
+        video = video.subclipped(0, max_duration)
+
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         audio_path = tmp.name
-        video.audio.write_audiofile(audio_path, verbose=False, logger=None)
+        video.audio.write_audiofile(audio_path, logger=None)
 
     # Transcribe with faster-whisper
-    segments = whisper_model.transcribe(audio_path)
+    segments, _ = whisper_model.transcribe(audio_path)
     transcript = " ".join([segment.text for segment in segments])
 
     os.remove(audio_path)
@@ -88,23 +94,16 @@ def transcribe_audio(video_path):
 def extract_ocr(frames):
     reader = easyocr.Reader(["en"])
     texts = []
-    for frame in frames:
-        results = reader.readtext(frame)
-        for _, text, conf in results:
-            if conf > 0.5:
-                texts.append(text)
+    for i, frame in enumerate(frames[:50]):  # Limit to first 50 frames
+        try:
+            results = reader.readtext(frame)
+            for _, text, conf in results:
+                if conf > 0.5:
+                    texts.append(text)
+        except Exception as e:
+            print(f"OCR failed on frame {i}: {e}")
+            continue
     return texts
-
-def _filter_gibberish_texts(texts, min_len=3, min_alpha_ratio=0.5):
-    cleaned_texts = []
-    for text in texts:
-        text = text.strip()
-        if not text: continue
-        if len(text) < min_len: continue
-        alpha_chars = sum(c.isalpha() for c in text)
-        if len(text) > 0 and (alpha_chars / len(text)) < min_alpha_ratio: continue
-        cleaned_texts.append(text)
-    return cleaned_texts
 
 def _clean_and_deduplicate_transcript(transcript_text, min_sentence_len=15):
     if not transcript_text: return ""
@@ -125,36 +124,48 @@ def _clean_and_deduplicate_transcript(transcript_text, min_sentence_len=15):
 
 # ---------- Step 5: Combine + summarize ----------
 def analyze_video(video_path):
-    print("🎬 Extracting frames...")
+    print(f"🎬 Extracting frames from: {video_path}")
     frames = extract_frames(video_path, fps=1)  # Adjust FPS if it's a faster transition videos like shorts / reels / music videos
+    print(f"Extracted {len(frames)} frames")
 
     print("🖼️ Captioning frames...")
     captions = caption_frames(frames)
+    print(f"Generated {len(captions)} captions")
 
     print("🔊 Transcribing audio...")
     try:
         transcript = transcribe_audio(video_path)
-    except:
+        print(f"Transcript length: {len(transcript)}")
+    except Exception as e:
+        print(f"Audio transcription failed: {e}")
         transcript = ""
 
     print("🔡 Extracting OCR texts...")
     ocr_texts = extract_ocr(frames)
-
-    # Tidy up texts before combining
-    # Remove gibberish from captions and OCR texts
-    cleaned_captions = captions #_filter_gibberish_texts(captions, min_len=5)
-    cleaned_ocr_texts = ocr_texts #_filter_gibberish_texts(ocr_texts, min_len=3)
+    print(f"Extracted {len(ocr_texts)} OCR texts")
 
     # Clean and deduplicate sentences in the transcript
     cleaned_transcript = _clean_and_deduplicate_transcript(transcript, min_sentence_len=15)
 
     combined_text = (
-        "Frame captions:\n" + " | ".join(cleaned_captions) + "\n\n"
+        "Frame captions:\n" + " | ".join(captions) + "\n\n"
         "Transcript:\n" + cleaned_transcript + "\n\n"
-        "On-screen text:\n" + " | ".join(cleaned_ocr_texts)
+        "On-screen text:\n" + " | ".join(ocr_texts)
     )
 
-    print("\n\n", combined_text, "\n\n")
+    print(f"\n\nCombined text length: {len(combined_text)}")
+    print(f"Captions count: {len(captions)}")
+    print(f"Transcript length: {len(cleaned_transcript)}")
+    print(f"OCR texts count: {len(ocr_texts)}")
+    print("Combined text preview:", combined_text[:200], "\n\n")
+
+    if not combined_text.strip() or len(combined_text.strip()) < 50:
+        return "Unable to analyze video: insufficient content extracted from video."
+
+    # Truncate if too long for API (keep first 8000 chars)
+    if len(combined_text) > 8000:
+        combined_text = combined_text[:8000] + "\n\n[Content truncated due to length]"
+        print(f"Truncated combined text to {len(combined_text)} characters")
 
     print("🧠 Summarizing with LLM...")
     summarized_texts = load_model(3, combined_text)  # Experiment with different models here
@@ -164,6 +175,10 @@ def analyze_video(video_path):
 def analyze_youtube_url(url):
     print(f"⬇️ Downloading {url} ...")
     video_path = download_youtube_video(url)
+    print(f"Downloaded to: {video_path}")
+
+    if not os.path.exists(video_path):
+        return "Error: Video download failed"
 
     try:
         summary = analyze_video(video_path)
@@ -171,12 +186,13 @@ def analyze_youtube_url(url):
         # Clean up temp file
         if os.path.exists(video_path):
             os.remove(video_path)
+            print("Cleaned up temporary file")
 
     return summary
 
 # ---------- Run ----------
 if __name__ == "__main__":
-    youtube_url = "https://www.youtube.com/watch?v=k6K196GrqG0"
+    youtube_url = "https://www.youtube.com/shorts/nxg5SQ9oTTU" #"https://www.youtube.com/watch?v=pzt6SmvGpXk&list=RDpzt6SmvGpXk&start_radio=1"
     # To check if video download works, try: yt-dlp --list-formats <url>
     result = analyze_youtube_url(youtube_url)
     print("\n===== VIDEO ANALYSIS =====")

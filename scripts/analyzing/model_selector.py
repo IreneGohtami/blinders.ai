@@ -109,7 +109,7 @@ def load_model(model_id, video_data):
         """
 
         messages = [
-            {"role": "system", "content": prompt}
+            {"role": "user", "content": prompt}
         ]
 
         try:
