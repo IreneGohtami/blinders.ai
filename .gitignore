@@ -42,5 +42,5 @@ next-env.d.ts
 
 # others
 artifacts/
-cookies.txt
+cookies.*
 __pycache__

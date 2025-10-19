@@ -5,10 +5,10 @@ import moviepy as mp
 import re
 import tempfile
 import yt_dlp
-#from openai import OpenAI
 from dotenv import load_dotenv
 from faster_whisper import WhisperModel
 from model_selector import load_model
+from yt_utils import config_ydl_opts
 from pathlib import Path
 from transformers import BlipProcessor, BlipForConditionalGeneration
 
@@ -19,15 +19,7 @@ load_dotenv(_script_dir_env)
 # ---------- Step 0: Download video from YouTube ----------
 def download_youtube_video(url):
     tmp_dir = tempfile.mkdtemp()
-    output_path = os.path.join(tmp_dir, "%(id)s.%(ext)s")
-
-    ydl_opts = {
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-        "outtmpl": output_path,
-        "quiet": True,
-        "noplaylist": True,
-        "nocheckcertificate": True,
-    }
+    ydl_opts = config_ydl_opts()
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -192,7 +184,7 @@ def analyze_youtube_url(url):
 
 # ---------- Run ----------
 if __name__ == "__main__":
-    youtube_url = "https://www.youtube.com/shorts/nxg5SQ9oTTU" #"https://www.youtube.com/watch?v=pzt6SmvGpXk&list=RDpzt6SmvGpXk&start_radio=1"
+    youtube_url = "https://www.youtube.com/shorts/DRtqJBXGT4M"
     # To check if video download works, try: yt-dlp --list-formats <url>
     result = analyze_youtube_url(youtube_url)
     print("\n===== VIDEO ANALYSIS =====")

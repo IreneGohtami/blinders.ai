@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with Supabase framework.
+# Blinders.ai
 
 ## Local Development
 Create a `.env.local` file in the root directory and define your next.js / public keys:
@@ -11,6 +11,7 @@ NEXT_PUBLIC_SCRAPER_API_KEY=
 NEXT_PUBLIC_GOOGLE_AUTH_CLIENT_ID=
 GOOGLE_AUTH_CLIENT_SECRET=
 SUPABASE_SERVICE_ROLE_KEY=
+MODAL_WEBHOOK_URL=
 ```
 
 Run the development server:
@@ -30,7 +31,6 @@ Create another `.env.local` file inside /scripts directory.
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 YOUTUBE_API_KEY=
-OPENAI_API_KEY=
 HF_TOKEN=
 ```
 The scripts are set to run automatically via Github scheduler which is configured inside `.github/workflows/`
@@ -66,3 +66,10 @@ node ./scripts/youtube_scraping.js
 Continuous deployment will be triggered whenever there's a push to `main` branch.
 
 Url: [webapp](my-supabase-2y3owejz8-irenegohtamis-projects.vercel.app)
+
+### Backend & Storage via Supabase
+### Modal functions for python ML processes via FastAPI
+To deploy app via cmd:
+```
+modal deploy ./scripts/analyzing/modal_video_analyzer.py
+```

@@ -63,12 +63,13 @@ function extractVideoId(url) {
 
 async function processVideoAsync(recordId, url) {
   try {
-    // Use Railway for production, local Python for development
-    if (process.env.NODE_ENV === 'production' && process.env.RAILWAY_SERVICE_URL) {
-      const response = await fetch(`${process.env.RAILWAY_SERVICE_URL}/analyze`, {
+    // Use Modal for production, local Python for development
+    console.log("ENV:", process.env.NODE_ENV, process.env.MODAL_WEBHOOK_URL)
+    if (process.env.NODE_ENV === 'production' && process.env.MODAL_WEBHOOK_URL) {
+      const response = await fetch(process.env.MODAL_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, record_id: recordId })
+        body: JSON.stringify({ video_url: url, record_id: recordId })
       })
       if (!response.ok) {
         throw new Error(`Analysis failed: ${response.statusText}`)
@@ -79,15 +80,15 @@ async function processVideoAsync(recordId, url) {
       const pythonProcess = spawn('python', [scriptPath, url, recordId], {
         env: { ...process.env }
       })
-      
+
       pythonProcess.stdout.on('data', (data) => {
         console.log(`Python output: ${data}`)
       })
-      
+
       pythonProcess.stderr.on('data', (data) => {
         console.error(`Python error: ${data}`)
       })
-      
+
       pythonProcess.on('close', (code) => {
         console.log(`Python process exited with code ${code}`)
       })
