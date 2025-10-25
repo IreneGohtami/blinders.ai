@@ -65,11 +65,26 @@ node ./scripts/youtube_scraping.js
 ## Frontend Deployment via Vercel
 Continuous deployment will be triggered whenever there's a push to `main` branch.
 
-Url: [webapp](my-supabase-2y3owejz8-irenegohtamis-projects.vercel.app)
+Url: [webapp](https://my-supabase-2y3owejz8-irenegohtamis-projects.vercel.app)
 
 ### Backend & Storage via Supabase
-### Modal functions for python ML processes via FastAPI
-To deploy app via cmd:
+### Modal functions to process python ML scripts via FastAPI
+
+#### Setup Modal Secrets
+Ensure you have these secrets configured in Modal:
+```bash
+# Create/update custom-secret with YouTube cookies
+modal secret create custom-secret YT_COOKIES_B64=<your-base64-encoded-cookies>
+
+# Or run the refresh script to update cookies automatically
+python ./scripts/refresh_cookies.py
 ```
+
+To deploy app via cmd:
+```bash
 modal deploy ./scripts/analyzing/modal_video_analyzer.py
+```
+To test modal function locally:
+```bash
+modal run ./scripts/analyzing/modal_video_analyzer.py --record-id=a298cf52-b87c-4436-8ff2-107cfad3748f --video-url=https://www.youtube.com/shorts/-MPJdQQKQUs
 ```

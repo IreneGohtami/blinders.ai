@@ -8,7 +8,7 @@ python-dotenv
 urllib3>=2
 OpenAI
 transformers
-yt-dlp
+yt-dlp==2025.10.22
 git+https://github.com/openai/CLIP.git
 moviepy
 imageio-ffmpeg

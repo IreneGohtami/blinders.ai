@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import Sidebar from '@/components/Sidebar'
+import ToastNotification from '@/components/ToastNotification'
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)
@@ -12,6 +13,7 @@ export default function Dashboard() {
   const [uploading, setUploading] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState(null)
   const [showAnalysisModal, setShowAnalysisModal] = useState(false)
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
   const supabase = createClient()
 
   useEffect(() => {
@@ -71,6 +73,8 @@ export default function Dashboard() {
       if (response.ok) {
         setShowUploadVideoModal(false)
         setUploadUrl('')
+        setToast({ show: true, message: 'Hang tight while we process your video...', type: 'success' })
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 6000)
         await fetchVideos()
       }
     } catch (error) {
@@ -186,7 +190,30 @@ export default function Dashboard() {
             {/* Latest Summary */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-8">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Latest Analysis Summary</h3>
-              <p className="text-gray-600 dark:text-gray-400 truncate">{getProcessingStatus()}</p>
+              <div className="space-y-3">
+                {videos.slice(0, 3).map((video, index) => {
+                  const createdAt = new Date(video.created_at)
+                  const completedAt = video.completed_at ? new Date(video.completed_at) : new Date()
+                  const durationMs = completedAt - createdAt
+                  const minutes = Math.floor(durationMs / 60000)
+                  const seconds = Math.floor((durationMs % 60000) / 1000)
+
+                  return (
+                    <div key={video.id} className="border-b border-gray-100 dark:border-gray-700 last:border-b-0 pb-2 last:pb-0">
+                      <p className="text-gray-900 dark:text-gray-100 font-medium truncate">{video.title || 'Untitled Video'}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {video.status === 'processing' ? `Processing: ${minutes}:${seconds.toString().padStart(2, '0')}` :
+                         video.completed_at ? `Completed: ${completedAt.toLocaleString()} • Time elapsed: ${minutes}min ${seconds.toString().padStart(2, '0')}sec` :
+                         video.status === 'failed' ? `Failed` :
+                         'Analysis pending'}
+                      </p>
+                    </div>
+                  )
+                })}
+                {videos.length === 0 && (
+                  <p className="text-gray-600 dark:text-gray-400">No videos analyzed yet</p>
+                )}
+              </div>
             </div>
 
             {/* My Videos Section */}
@@ -211,7 +238,7 @@ export default function Dashboard() {
                     {videos.map((video) => (
                       <div key={video.id} className="group">
                         <div className="cursor-pointer" onClick={() => {
-                          if (video.status === 'completed' && video.summary) {
+                          if (video.status !== 'processing' && (video.summary || video.error_message)) {
                             setSelectedVideo(video)
                             setShowAnalysisModal(true)
                           } else {
@@ -311,7 +338,7 @@ export default function Dashboard() {
               <div>
                 <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Analysis Summary</h4>
                 <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{selectedVideo.summary}</p>
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{selectedVideo.summary || selectedVideo.error_message}</p>
                 </div>
               </div>
 
@@ -360,6 +387,11 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      <ToastNotification
+        toast={toast}
+        onDismiss={() => setToast({ show: false, message: '', type: 'success' })}
+      />
     </div>
   )
 }

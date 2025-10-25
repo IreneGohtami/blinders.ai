@@ -85,6 +85,9 @@ def refresh_cookies():
         print(f"📋 Base64 content: {b64_content[:50]}...")
 
         # Update Modal secret
+        if (os.environ.get('NODE_ENV') == 'development'):
+            print("⚠️ Skipping Modal secret update in development environment")
+            return
         try:
             modal_cmd = [
                 "modal", "secret", "create", "custom-secret",

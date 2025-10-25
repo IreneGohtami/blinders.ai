@@ -14,12 +14,12 @@ from transformers import BlipProcessor, BlipForConditionalGeneration
 
 _script_dir_env = Path(__file__).parent.parent / ".env.local"
 load_dotenv(_script_dir_env)
-#openAIClient = OpenAI()
 
 # ---------- Step 0: Download video from YouTube ----------
 def download_youtube_video(url):
     tmp_dir = tempfile.mkdtemp()
-    ydl_opts = config_ydl_opts()
+    output_path = os.path.join(tmp_dir, "%(id)s.%(ext)s")
+    ydl_opts = config_ydl_opts(output_path)
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -62,7 +62,8 @@ def caption_frames(frames):
 # ---------- Step 3: Audio transcription ----------
 whisper_model = WhisperModel(
     "medium",
-    compute_type="float32"
+    device="cpu",
+    compute_type="int8"
 )
 
 def transcribe_audio(video_path, max_duration=120):
@@ -152,7 +153,7 @@ def analyze_video(video_path):
     print("Combined text preview:", combined_text[:200], "\n\n")
 
     if not combined_text.strip() or len(combined_text.strip()) < 50:
-        return "Unable to analyze video: insufficient content extracted from video."
+        raise ValueError("Unable to analyze video: insufficient content extracted from video.")
 
     # Truncate if too long for API (keep first 8000 chars)
     if len(combined_text) > 8000:
@@ -170,7 +171,7 @@ def analyze_youtube_url(url):
     print(f"Downloaded to: {video_path}")
 
     if not os.path.exists(video_path):
-        return "Error: Video download failed"
+        raise Exception("Video download failed")
 
     try:
         summary = analyze_video(video_path)
