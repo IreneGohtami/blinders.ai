@@ -16,5 +16,14 @@ export default function AuthCallback() {
     finishAuth()
   }, [router, supabase])
 
-  return <p>Signing you in...</p>
+  return (
+    <div className="page-container">
+      <div className="card text-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <p className="text-lg font-medium text-gray-700 dark:text-gray-300">Signing you in...</p>
+        </div>
+      </div>
+    </div>
+  )
 }

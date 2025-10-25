@@ -65,7 +65,7 @@ node ./scripts/youtube_scraping.js
 ## Frontend Deployment via Vercel
 Continuous deployment will be triggered whenever there's a push to `main` branch.
 
-Url: [webapp](https://my-supabase-2y3owejz8-irenegohtamis-projects.vercel.app)
+Url: [webapp](https://my-supabase-app-delta.vercel.app/signin)
 
 ### Backend & Storage via Supabase
 ### Modal functions to process python ML scripts via FastAPI

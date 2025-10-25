@@ -12,6 +12,20 @@
   --color-primary-700: #4338CA;
   --color-secondary-500: #9333EA;
   --color-secondary-600: #7E22CE;
+
+  /* Animations */
+  @keyframes slide-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  --animate-slide-in: slide-in 0.5s ease-out;
 }
 
 @layer base {

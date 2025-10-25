@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [uploading, setUploading] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState(null)
   const [showAnalysisModal, setShowAnalysisModal] = useState(false)
-  const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
+  const [toast, setToast] = useState({ show: false, message: '', type: 'notification' })
   const supabase = createClient()
 
   useEffect(() => {
@@ -73,8 +73,8 @@ export default function Dashboard() {
       if (response.ok) {
         setShowUploadVideoModal(false)
         setUploadUrl('')
-        setToast({ show: true, message: 'Hang tight while we process your video...', type: 'success' })
-        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 6000)
+        setToast({ show: true, message: 'Hang tight while we process your video...', type: 'notification' })
+        setTimeout(() => setToast({ show: false, message: '', type: 'notification' }), 6000)
         await fetchVideos()
       }
     } catch (error) {
