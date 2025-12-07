@@ -11,6 +11,7 @@ from model_selector import load_model
 from yt_utils import config_ydl_opts
 from pathlib import Path
 from transformers import BlipProcessor, BlipForConditionalGeneration
+from video_forecaster import VideoForecaster
 
 _script_dir_env = Path(__file__).parent.parent / ".env.local"
 load_dotenv(_script_dir_env)
@@ -116,7 +117,7 @@ def _clean_and_deduplicate_transcript(transcript_text, min_sentence_len=15):
     return " ".join(cleaned_sentences)
 
 # ---------- Step 5: Combine + summarize ----------
-def analyze_video(video_path):
+def analyze_video(video_path, include_forecast=False, metadata=None):
     print(f"🎬 Extracting frames from: {video_path}")
     frames = extract_frames(video_path, fps=1)  # Adjust FPS if it's a faster transition videos like shorts / reels / music videos
     print(f"Extracted {len(frames)} frames")
@@ -162,10 +163,24 @@ def analyze_video(video_path):
 
     print("🧠 Summarizing with LLM...")
     summarized_texts = load_model(3, combined_text)  # Experiment with different models here
-    return summarized_texts
+
+    result = {}
+    result["summary"] = summarized_texts.strip()
+
+    if include_forecast:
+        print("📊 Generating forecast statistics...")
+        try:
+            forecaster = VideoForecaster()
+            predictions = forecaster.predict(summarized_texts, metadata)
+            result["forecast"] = predictions
+        except Exception as e:
+            print(f"⚠️ Forecast failed: {e}")
+            result["forecast"] = None
+
+    return result
 
 # ---------- Full pipeline from URL ----------
-def analyze_youtube_url(url, use_cookies=False):
+def analyze_youtube_url(url, use_cookies=False, include_forecast=False, metadata=None):
     print(f"⬇️ Downloading {url} ...")
     video_path = download_youtube_video(url, use_cookies=use_cookies)
     print(f"Downloaded to: {video_path}")
@@ -174,19 +189,32 @@ def analyze_youtube_url(url, use_cookies=False):
         raise Exception("Video download failed")
 
     try:
-        summary = analyze_video(video_path)
+        result = analyze_video(video_path, include_forecast, metadata)
     finally:
         # Clean up temp file
         if os.path.exists(video_path):
             os.remove(video_path)
             print("Cleaned up temporary file")
 
-    return summary
+    return result
 
 # ---------- Run ----------
 if __name__ == "__main__":
     youtube_url = "https://www.youtube.com/shorts/DRtqJBXGT4M"
+
+    # Sample metadata for better predictions
+    metadata = {'title': 'Bella Ciao 🇮🇹🎻#italy #bellciao #cello #coversong #viral #love', 'duration': 36, 'thumbnail_url': 'https://i.ytimg.com/vi/-MPJdQQKQUs/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AOn4CLDK-aP-FBlq4_dGCT4_wLD0KGri4A', 'channel': 'JODOK CELLO', 'view_count': 2750318, 'follower_count': 1390000, 'category_id': 10, 'platform_id': 1, 'upload_day_of_week': 0, 'upload_hour': 14, 'upload_month': 6}
+
     # To check if video download works, try: yt-dlp --list-formats <url>
-    result = analyze_youtube_url(youtube_url)
+    result = analyze_youtube_url(youtube_url, include_forecast=True, metadata=metadata)
+
     print("\n===== VIDEO ANALYSIS =====")
-    print(result)
+    print(result["summary"])
+
+    if result.get("forecast"):
+        print("\n===== 6-MONTH FORECAST =====")
+        forecast = result["forecast"]
+        print(f"Expected Views: {forecast.get('views_6months', 0):,.0f}")
+        print(f"Expected Likes: {forecast.get('likes_6months', 0):,.0f}")
+        print(f"Expected Comments: {forecast.get('comments_6months', 0):,.0f}")
+        print(f"Engagement Score: {forecast.get('engagement_score', 0):.4f}")

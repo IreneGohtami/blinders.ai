@@ -107,7 +107,7 @@ If there's no audio/transcript, just focus on the visual content and on-screen t
               messages=[
                   {"role": "user", "content": prompt}
               ],
-              max_tokens=300,
+              max_tokens=500,
             )
             return response.choices[0].message.content
 

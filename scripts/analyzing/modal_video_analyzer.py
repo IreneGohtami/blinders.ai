@@ -1,6 +1,6 @@
 import modal
 import os
-from yt_utils import config_ydl_opts
+from yt_utils import config_ydl_opts, map_youtube_category_to_id
 
 # Create Modal app
 app = modal.App("blinders-video-analyzer")
@@ -25,10 +25,15 @@ image = (
         "torch",
         "transformers",
         "huggingface-hub",
+        "joblib",
+        "sentence-transformers",
+        "lightgbm",
+        "scikit-learn"
     ])
     .add_local_file(f"{current_dir}/analyze_video.py", remote_path="/root/analyze_video.py")
     .add_local_file(f"{current_dir}/model_selector.py", remote_path="/root/model_selector.py")
     .add_local_file(f"{current_dir}/yt_utils.py", remote_path="/root/yt_utils.py")
+    .add_local_file(f"{current_dir}/video_forecaster.py", remote_path="/root/video_forecaster.py")
 )
 
 @app.function(
@@ -58,33 +63,83 @@ def process_video(video_url: str, record_id: str):
             ydl_opts = config_ydl_opts(None, True)
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(video_url, download=False)
-            return {
+
+            from datetime import datetime
+            published_at = info.get("upload_date")
+            if published_at:
+                dt = datetime.strptime(published_at, "%Y%m%d")
+                upload_day_of_week = dt.weekday()
+                upload_month = dt.month
+            else:
+                upload_day_of_week = upload_month = 0
+
+            # upload_date doesn't have time, use timestamp if available
+            timestamp = info.get("timestamp")
+            if timestamp:
+                upload_hour = datetime.fromtimestamp(timestamp).hour
+            else:
+                upload_hour = 12  # default to noon
+
+            # Extract category_id safely
+            category_id = 0
+            categories = info.get("categories", [])
+            category_id = map_youtube_category_to_id(categories[0]) if categories else 0
+
+            # Data for database (only existing columns)
+            db_metadata = {
                 "title": info.get("title", "Unknown Title"),
                 "duration": info.get("duration", 0),
                 "thumbnail_url": info.get("thumbnail"),
                 "channel": info.get("uploader", "Unknown Channel"),
                 "view_count": info.get("view_count", 0),
             }
+
+            # Data for forecaster (all features)
+            forecast_metadata = {
+                "follower_count": info.get("channel_follower_count", 0),
+                "category_id": category_id,
+                "platform_id": 1,
+                "upload_day_of_week": upload_day_of_week,
+                "upload_hour": upload_hour,
+                "upload_month": upload_month,
+            }
+
+            return db_metadata, forecast_metadata
         except Exception as e:
             print(f"Metadata extraction failed: {e}")
-            return {}
+            return {}, {"platform_id": 1}
 
     try:
         print(f"Starting analysis for video: {video_url}")
 
-        metadata = get_video_metadata(video_url)
-        supabase.table("video_analyses").update(metadata).eq("id", record_id).execute()
+        db_metadata, forecast_metadata = get_video_metadata(video_url)
+        combined_metadata = {**db_metadata, **forecast_metadata}
+        print(f"Extracted metadata: {combined_metadata}")
 
-        result = analyze_youtube_url(video_url, use_cookies=True)
+        supabase.table("video_analyses").update(db_metadata).eq("id", record_id).execute()
 
-        supabase.table("video_analyses").update(
-            {"status": "completed", "summary": result}
-        ).eq("id", record_id).execute()
+        result = analyze_youtube_url(video_url, use_cookies=True, include_forecast=True, metadata=combined_metadata)
+        print(f"Analysis result: {result}")
 
-        return {"success": True, "summary": result}
+        from datetime import datetime
+        update_data = {
+            "status": "completed",
+            "summary": result.get("summary"),
+            "completed_at": datetime.now().isoformat()
+        }
+
+        if result.get("forecast"):
+            update_data["forecast"] = result["forecast"]
+
+        supabase.table("video_analyses").update(update_data).eq("id", record_id).execute()
+
+        return {"success": True, "result": result}
 
     except Exception as e:
+        import traceback
         error_msg = f"{type(e).__name__}: {str(e)}"
+        print(f"Error occurred: {error_msg}")
+        print(traceback.format_exc())
         supabase.table("video_analyses").update(
             {"status": "failed", "error_message": error_msg}
         ).eq("id", record_id).execute()
