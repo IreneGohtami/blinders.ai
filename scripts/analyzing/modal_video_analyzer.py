@@ -10,11 +10,13 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 # Define image with dependencies and local files
 image = (
     modal.Image.debian_slim(python_version="3.11")
-    .apt_install(["ffmpeg"])
+    .apt_install(["ffmpeg", "curl", "unzip"])
+    .run_commands("curl -fsSL https://deno.land/install.sh | sh")
+    .env({"PATH": "/root/.deno/bin:$PATH"})
     .pip_install(["fastapi", "fastapi[standard]"])
     .pip_install([
         "supabase",
-        "yt-dlp==2025.10.22", # Reminder: have to use latest version
+        "yt-dlp>=2025.11.12",
         "opencv-python-headless",
         "easyocr",
         "moviepy",
@@ -23,7 +25,6 @@ image = (
         "torch",
         "transformers",
         "huggingface-hub",
-        #"ctranslate2==4.4.0"
     ])
     .add_local_file(f"{current_dir}/analyze_video.py", remote_path="/root/analyze_video.py")
     .add_local_file(f"{current_dir}/model_selector.py", remote_path="/root/model_selector.py")
@@ -54,7 +55,7 @@ def process_video(video_url: str, record_id: str):
 
     def get_video_metadata(video_url):
         try:
-            ydl_opts = config_ydl_opts()
+            ydl_opts = config_ydl_opts(None, True)
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(video_url, download=False)
             return {
@@ -74,7 +75,7 @@ def process_video(video_url: str, record_id: str):
         metadata = get_video_metadata(video_url)
         supabase.table("video_analyses").update(metadata).eq("id", record_id).execute()
 
-        result = analyze_youtube_url(video_url)
+        result = analyze_youtube_url(video_url, use_cookies=True)
 
         supabase.table("video_analyses").update(
             {"status": "completed", "summary": result}

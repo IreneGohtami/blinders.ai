@@ -16,10 +16,10 @@ _script_dir_env = Path(__file__).parent.parent / ".env.local"
 load_dotenv(_script_dir_env)
 
 # ---------- Step 0: Download video from YouTube ----------
-def download_youtube_video(url):
+def download_youtube_video(url, use_cookies=False):
     tmp_dir = tempfile.mkdtemp()
     output_path = os.path.join(tmp_dir, "%(id)s.%(ext)s")
-    ydl_opts = config_ydl_opts(output_path)
+    ydl_opts = config_ydl_opts(output_path, use_cookies)
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -165,9 +165,9 @@ def analyze_video(video_path):
     return summarized_texts
 
 # ---------- Full pipeline from URL ----------
-def analyze_youtube_url(url):
+def analyze_youtube_url(url, use_cookies=False):
     print(f"⬇️ Downloading {url} ...")
-    video_path = download_youtube_video(url)
+    video_path = download_youtube_video(url, use_cookies=use_cookies)
     print(f"Downloaded to: {video_path}")
 
     if not os.path.exists(video_path):

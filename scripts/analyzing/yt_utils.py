@@ -7,6 +7,7 @@ def write_cookies_from_secret():
     b64 = os.environ.get("YT_COOKIES_B64")
     if not b64:
         try:
+            print("No cookies found in environment variable, trying to read from file")
             with open("../cookies.b64", "r") as f:
                 b64 = f.read().strip()
         except FileNotFoundError:
@@ -24,8 +25,8 @@ def write_cookies_from_secret():
         print(f"Wrote cookies to temporary file: {tmp_path}")
     return tmp_path
 
-def config_ydl_opts(output_path=None):
-    cookie_path = write_cookies_from_secret()
+def config_ydl_opts(output_path=None, pass_cookies=False):
+    cookie_path = write_cookies_from_secret() if pass_cookies else None
 
     opts = {
         "format": "bestvideo[ext=mp4][vcodec!*=av01][vcodec!*=vp9]+bestaudio[ext=m4a]/best[ext=mp4]/best", # Use single format to avoid merging
@@ -33,7 +34,10 @@ def config_ydl_opts(output_path=None):
         "quiet": True,
         "noplaylist": True,
         "nocheckcertificate": True,
-        "cookiefile": cookie_path
+        "remote_components": ["ejs:github"]
     }
+
+    if cookie_path:
+        opts["cookiefile"] = cookie_path
 
     return opts

@@ -1,3 +1,8 @@
+"""
+To use ytl-dlp library, we need to extract cookies from Chrome, filter them, base64 encode, and update Modal secret.
+Or, go to Chrome Incognito, open youtube.com and login, then navigate to https://www.youtube.com/robots.txt.
+Use the Get cookies extension to export cookies, then base64 encode and update Modal secret manually.
+"""
 #!/usr/bin/env python3
 import subprocess
 import base64

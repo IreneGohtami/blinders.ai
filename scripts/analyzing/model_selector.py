@@ -10,7 +10,7 @@ from transformers import AutoTokenizer, pipeline
 MODEL_MAP = {
     1: "facebook/bart-large-cnn",
     2: "google/flan-t5-base",
-    3: "mistralai/Mistral-7B-Instruct-v0.3"
+    3: "mistralai/Mistral-7B-Instruct-v0.2"
 }
 
 def load_model(model_id, video_data):
@@ -89,34 +89,25 @@ def load_model(model_id, video_data):
         if not HF_TOKEN:
             raise ValueError("HF_TOKEN environment variable not set. Required for Mistral model.")
 
-        # Initialize InferenceClient
-        client = InferenceClient(
-            model=model_name,
-            token=HF_TOKEN,
-        )
+        client = InferenceClient(model=model_name, token=HF_TOKEN)
 
-        # Construct prompt
-        prompt = f"""
-        You are an AI video analyst. Based on the following data, describe:
-        1. The narrative (story arc, flow, pacing).
-        2. What the video is about (main theme or category).
-        3. Video quality: smoothness of transitions, clarity of audio/music.
+        prompt = f"""You are an AI video analyst. Based on the following data, describe:
+1. The narrative (story arc, flow, pacing).
+2. What the video is about (main theme or category).
+3. Video quality: smoothness of transitions, clarity of audio/music.
 
-        Data:
-        {video_data}
+Data:
+{video_data}
 
-        If there's no audio/transcript, just focus on the visual content and on-screen text if any.
-        """
-
-        messages = [
-            {"role": "user", "content": prompt}
-        ]
+If there's no audio/transcript, just focus on the visual content and on-screen text if any."""
 
         try:
-            response = client.chat_completion(
-                messages=messages,
-                max_tokens=300,
-                stream=False,
+            response = client.chat.completions.create(
+              model=model_name,
+              messages=[
+                  {"role": "user", "content": prompt}
+              ],
+              max_tokens=300,
             )
             return response.choices[0].message.content
 
