@@ -65,7 +65,7 @@ async function processVideoAsync(recordId, url) {
   try {
     // Use Modal for production, local Python for development
     console.log("ENV:", process.env.NODE_ENV, process.env.MODAL_WEBHOOK_URL)
-    if (process.env.NODE_ENV === 'production' && process.env.MODAL_WEBHOOK_URL) {
+    if (/*process.env.NODE_ENV === 'production' &&*/ process.env.MODAL_WEBHOOK_URL) {
       const response = await fetch(process.env.MODAL_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
