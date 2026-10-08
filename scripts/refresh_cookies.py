@@ -25,7 +25,7 @@ def refresh_cookies():
 
     try:
         print("Extracting cookies from Chrome...")
-        subprocess.run(cmd, check=True, capture_output=True)
+        #subprocess.run(cmd, check=True, capture_output=True)
 
         if not cookies_file.exists():
             raise FileNotFoundError("cookies.txt was not created")

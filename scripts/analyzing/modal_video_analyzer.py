@@ -116,7 +116,8 @@ def process_video(video_url: str, record_id: str):
         combined_metadata = {**db_metadata, **forecast_metadata}
         print(f"Extracted metadata: {combined_metadata}")
 
-        supabase.table("video_analyses").update(db_metadata).eq("id", record_id).execute()
+        update_payload = {**db_metadata, "metadata": combined_metadata}
+        supabase.table("video_analyses").update(update_payload).eq("id", record_id).execute()
 
         result = analyze_youtube_url(video_url, use_cookies=True, include_forecast=True, metadata=combined_metadata)
         print(f"Analysis result: {result}")
